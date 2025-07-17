@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>こころの迷宮 - プロトタイプ</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: url('images/meikyuhaikei.png') no-repeat center center fixed;
+      background-size: cover;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+  #game {
+      flex: 1;
+      padding: 1em;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      backdrop-filter: brightness(0.95);
+    }
+    #question {
+      color: #fff;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+    }
+    #choices {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1.5em;
+      margin-top: 1em;
+    }
+    .choice {
+      position: relative;
+      padding: 2em;
+      background: rgba(255, 255, 255, 0.85);
+      border: 2px solid #444;
+      border-radius: 16px;
+      cursor: pointer;
+      width: 280px;
+      text-align: left;
+      box-sizing: border-box;
+      font-size: 1.1em;
+      line-height: 1.5em;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      overflow: hidden;
+    }
+    .choice:hover {
+      transform: scale(1.05);
+      box-shadow: 4px 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .choice::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -75%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(120deg, rgba(255,255,255,0.3), rgba(255,255,255,0));
+      transform: skewX(-20deg);
+    }
+    .choice:hover::after {
+      animation: shine 0.75s ease-out;
+    }
+    .choice.clicked {
+      animation: pop 0.4s ease forwards;
+    }
+    @keyframes shine {
+      0% { left: -75%; }
+      100% { left: 125%; }
+    }
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); box-shadow: 0 0 15px rgba(255, 255, 100, 0.6); }
+      100% { transform: scale(1); }
+    }
+    .choice strong {
+      display: block;
+      font-size: 1.6em;
+      margin-bottom: 0.5em;
+    }
+    #party {
+      background: rgba(222, 226, 230, 0.9);
+      padding: 0.5em;
+      font-size: 0.9em;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      border-top: 2px solid #aaa;
+    }
+    .member {
+      background: #fff;
+      margin: 0.3em;
+      padding: 0.3em 0.8em;
+      border-radius: 12px;
+      border: 1px solid #888;
+      text-align: center;
+      cursor: pointer;
+    }
+    .member img {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto 0.3em;
+    }
+    #result {
+      display: none;
+      padding: 1em;
+      background: rgba(255, 255, 255, 0.95);
+    }
+    .tooltip {
+      position: relative;
+      display: inline-block;
+    }
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: max-content;
+      max-width: 200px;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      text-align: left;
+      border-radius: 8px;
+      padding: 0.5em 0.8em;
+      position: absolute;
+      z-index: 1;
+      bottom: 110%;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      font-size: 0.85em;
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+      pointer-events: none;
+      white-space: pre-wrap;
+    }
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div id="question"></div>
+    <div id="choices"></div>
+  </div>
+  <div id="party"></div>
+  <div id="result"></div>
+  <div id="whitenout" style="position: fixed;top: 0;left: 0;width: 100%;height: 100%;background: white;opacity: 0;pointer-events: none;transition: opacity 1s ease;z-index: 9999;"></div>
+
+  <div id="start-screen" style="position: fixed;top: 0;left: 0;width: 100%;height: 100%;background: url('images/meikyuhaikei.png') no-repeat center center fixed;background-size: cover;display: flex;flex-direction: column;justify-content: center;align-items: center;z-index: 9999;">
+    <h1 style="color: white; font-size: 3em; text-shadow: 2px 2px 8px rgba(0,0,0,0.8); margin-bottom: 0.2em;">こころの迷宮</h1>
+    <p style="color: white; font-size: 1.2em; margin-bottom: 2em; text-shadow: 1px 1px 5px rgba(0,0,0,0.7);">― あなたの価値観と出会う旅 ―</p>
+    <button onclick="startGame()" style="padding: 0.8em 2em;font-size: 1.2em;border-radius: 12px;border: 2px solid #fff;background: rgba(255,255,255,0.85);cursor: pointer;box-shadow: 2px 2px 10px rgba(0,0,0,0.4);transition: transform 0.2s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"><span>はじめる</span></button>
+  </div>
+
+  <script>
+    const descriptions = {
+  "受容": { "text": "ありのままの自分を受け入れてもらう", "image": "錬金術師青.png" },
+  "調和": { "text": "周囲の環境と調和しながら生きる", "image": "魔法使い青.png" },
+  "正確": { "text": "自分の意見や信念を正しく伝える", "image": "商人黄.png" },
+  "興奮": { "text": "スリルと刺激に満ちた人生を送る", "image": "魔法剣士緑.png" },
+  "達成": { "text": "何か重要なことを達成する", "image": "盗賊緑.png" },
+  "貞節": { "text": "パートナーにうそをつかず誠実に生きる", "image": "僧侶緑.png" },
+  "冒険": { "text": "新しくてわくわくする体験をする", "image": "戦士赤.png" },
+  "名声": { "text": "有名になって存在を認められる", "image": "召喚士緑.png" },
+  "魅力": { "text": "身体的な魅力を保つ", "image": "錬金術師赤.png" },
+  "家族": { "text": "幸福で愛に満ちた家庭を作る", "image": "召喚士青.png" },
+  "権威": { "text": "他者に対して責任を持つ立場に就く", "image": "魔法使い赤.png" },
+  "体力": { "text": "丈夫で強い身体を保つ", "image": "吟遊詩人赤.png" },
+  "自治": { "text": "人生をじぶんで自由に決める", "image": "踊り子黄.png" },
+  "柔軟": { "text": "新たな環境にも簡単に馴染む", "image": "盗賊黄.png" },
+  "美的": { "text": "身の回りの美しいものを味わう", "image": "モンク赤.png" },
+  "許し": { "text": "他人を許しておだやかに生きる", "image": "狩人赤.png" },
+  "庇護": { "text": "他者の面倒を見る", "image": "魔法剣士青.png" },
+  "友情": { "text": "親密で助け合える友人を作る", "image": "賢者紫.png" },
+  "挑戦": { "text": "難しい仕事や問題に取り組む", "image": "盗賊青.png" },
+  "愉楽": { "text": "遊んで楽しむこと", "image": "踊り子緑.png" },
+  "変化": { "text": "変化に富んだバラエティ豊かな人生を送る", "image": "賢者青.png" },
+  "寛大": { "text": "自分のものを他人に与える", "image": "海賊青.png" },
+  "快適": { "text": "苦しみ・悩みがない生活を送る", "image": "賢者赤.png" },
+  "真実": { "text": "自分が正しいと思うとおりに行動する", "image": "海賊黄.png" },
+  "誓約": { "text": "絶対に破れない約束や誓いを結ぶ", "image": "賢者黄.png" },
+  "信教": { "text": "自分を超えた存在の意義を考える", "image": "海賊緑.png" },
+  "慈愛": { "text": "他者を心配して助ける", "image": "戦士紫.png" },
+  "成長": { "text": "変化と成長を続ける", "image": "錬金術師緑.png" },
+  "貢献": { "text": "世界の役に立つことをする", "image": "鍛冶屋紫.png" },
+  "健康": { "text": "健やかで体調よく生きる", "image": "召喚士赤.png" },
+  "協調": { "text": "他者と協力して何かをする", "image": "魔法使い紫.png" },
+  "有益": { "text": "他人の役に立つこと", "image": "吟遊詩人紫.png" },
+  "礼儀": { "text": "他者に対して敬意を払い正直に接する", "image": "海賊赤.png" },
+  "正直": { "text": "うそをつかず正直に生きる", "image": "僧侶赤.png" },
+  "創造": { "text": "新しく斬新なアイデアを生む", "image": "僧侶紫.png" },
+  "希望": { "text": "ポジティブで楽観的に生きる", "image": "パラディン赤.png" },
+  "信頼": { "text": "信用があって頼れる人間になる", "image": "狩人黄.png" },
+  "謙遜": { "text": "地味で控えめに暮らす", "image": "鍛冶屋黄.png" },
+  "義務": { "text": "自分の責任に一生懸命取り組む", "image": "商人緑.png" },
+  "笑い": { "text": "人生や世間のユーモラスな面を見る", "image": "鍛冶屋赤.png" },
+  "勤勉": { "text": "仕事の面で平穏無事な毎日", "image": "モンク緑.png" },
+  "独立": { "text": "他者に依存しないで生きる", "image": "僧侶黄.png" },
+  "平安": { "text": "精神的に穏やかに", "image": "商人紫.png" },
+  "合理": { "text": "理性的に論理に従う", "image": "吟遊詩人黄.png" },
+  "親密": { "text": "プライベートな領域を他人とシェアする", "image": "狩人紫.png" },
+  "現実": { "text": "現実的、実際的に振舞う", "image": "パラディン青.png" },
+  "正義": { "text": "すべての人を公平に扱う", "image": "僧侶青.png" },
+  "責任": { "text": "責任を持って行動する", "image": "吟遊詩人緑.png" },
+  "知識": { "text": "価値ある知識を学ぶ", "image": "モンク紫.png" },
+  "危険": { "text": "リスクをとってチャンスを手に入れる", "image": "鍛冶屋青.png" },
+  "余暇": { "text": "自分の時間をリラックスして楽しむ", "image": "モンク黄.png" },
+  "恋愛": { "text": "興奮して燃えるような恋をする", "image": "商人赤.png" },
+  "寛容": { "text": "厳しい人から受け入れる", "image": "モンク青.png" },
+  "安全": { "text": "安心と安泰を得る", "image": "鍛冶屋緑.png" },
+  "愛慕": { "text": "誰かに愛される", "image": "錬金術師紫.png" },
+  "受諾": { "text": "ありのままの自分を受け入れる", "image": "戦士黄.png" },
+  "熟達": { "text": "いつもの仕事・作業に習熟する", "image": "賢者緑.png" },
+  "自制": { "text": "自分の行動を自分でコントロールする", "image": "盗賊赤.png" },
+  "現在": { "text": "今の瞬間に集中して生きる", "image": "魔法剣士紫.png" },
+  "自尊": { "text": "自分に自信を持つ", "image": "吟遊詩人青.png" },
+  "適度": { "text": "過剰を避けて程よいところを探す", "image": "パラディン緑.png" },
+  "自知": { "text": "自分について深い理解をもつ", "image": "魔法使い緑.png" },
+  "献身": { "text": "誰かに捧げる", "image": "商人青.png" },
+  "反抗": { "text": "権威やルールに反発や闘争心を持つ", "image": "海賊紫.png" },
+  "性愛": { "text": "活動的で満足のいく性生活を送る", "image": "踊り子青.png" },
+  "配慮": { "text": "他人をいたわって世話をする", "image": "魔法使い黄.png" },
+  "開放": { "text": "新たな体験、発想、選択に心を開く", "image": "召喚士紫.png" },
+  "孤独": { "text": "他人から離れて一人でいる時間を静かに持つ", "image": "狩人緑.png" },
+  "秩序": { "text": "愛されて秩序のある人生を送る", "image": "パラディン紫.png" },
+  "精神": { "text": "精神的に成長し成熟する", "image": "盗賊紫.png" },
+  "情熱": { "text": "何らかの対象・活動・人々に深い情熱を抱く", "image": "魔法剣士黄.png" },
+  "安定": { "text": "いつも一定して安定して暮らす", "image": "錬金術師黄.png" },
+  "快楽": { "text": "いい気分になること", "image": "パラディン黄.png" },
+  "人気": { "text": "多くの人に好かれる", "image": "戦士緑.png" },
+  "伝統": { "text": "過去から受け継がれてきたルーツを尊敬する", "image": "戦士青.png" },
+  "権力": { "text": "他人をコントロールする", "image": "狩人青.png" },
+  "目的": { "text": "人生の意味、方向性を定める", "image": "魔法剣士赤.png" },
+
+    };
+
+
+    const words = Object.keys(descriptions);
+    let index = 0;
+    let party = [];
+    let pendingWord = null;
+
+    function updateProgress() {
+      const question = document.getElementById("question");
+      const remaining = Math.max(0, Math.floor((words.length - index) / 2));
+      question.innerHTML = `<div style="font-size: 0.9em; margin-bottom: 0.5em; color: #ddd; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">【仲間 ${party.length}/10人】 残りの選択 ${remaining} 問</div>`;
+    }
+
+    function renderQuestion() {
+      updateProgress();
+      if (index >= words.length - 1) {
+        document.getElementById("whitenout").style.opacity = 1;
+        setTimeout(() => {
+          document.getElementById("whitenout").style.opacity = 0;
+          document.getElementById("game").style.display = "none";
+          document.getElementById("result").style.display = "block";
+          document.body.style.background = "url('images/clearsky.png') no-repeat center center fixed";
+          document.body.style.backgroundSize = "cover";
+          const resultDiv = document.getElementById("result");
+          resultDiv.innerHTML = `<h2>🌟 あなたの仲間 🌟</h2>`;
+          const list = document.createElement("ul");
+          list.style.display = "flex";
+          list.style.flexWrap = "wrap";
+          list.style.justifyContent = "center";
+          list.style.listStyle = "none";
+          list.style.padding = "0";
+          party.forEach(w => {
+            const li = document.createElement("li");
+            li.style.margin = "1em";
+            li.innerHTML = `<img src="images/${descriptions[w].image}" alt="${w}" style="width:100px;height:100px;display:block;margin:0 auto;"><div style="text-align:center;margin-top:0.5em;">${w}</div>`;
+            list.appendChild(li);
+          });
+          resultDiv.appendChild(list);
+          const comment = document.createElement("div");
+          comment.style.marginTop = "2em";
+          comment.style.background = "rgba(255,255,255,0.8)";
+          comment.style.padding = "1em";
+          comment.style.borderRadius = "12px";
+          comment.style.boxShadow = "2px 2px 8px rgba(0,0,0,0.2)";
+          comment.innerText = "あなたは『" + party[0] + "』や『" + party[1] + "』といった価値観を大切にするタイプ。自分の信念を持ち、仲間と共に前に進む力があります。";
+          resultDiv.appendChild(comment);
+        }, 1000);
+        return;
+      }
+      
+      const question = document.getElementById("question");
+      const choices = document.getElementById("choices");
+      const w1 = words[index];
+      const w2 = words[index + 1];
+      question.innerHTML += `<div style="font-size: 1.2em; color: #fff; margin-top: 0.5em; text-shadow: 1px 1px 3px rgba(0,0,0,0.7);">どちらを仲間にしますか？</div>`;
+      choices.innerHTML = "";
+
+      if (!document.getElementById("skipContainer")) {
+      const skipButton = document.createElement("button");
+      skipButton.innerText = "どちらも選ばない";
+      skipButton.style.marginTop = "2em";
+      skipButton.style.padding = "0.6em 1.5em";
+      skipButton.style.fontSize = "1.1em";
+      skipButton.style.borderRadius = "12px";
+      skipButton.style.border = "2px solid #444";
+      skipButton.style.background = "rgba(255,255,255,0.85)";
+      skipButton.style.cursor = "pointer";
+      skipButton.style.boxShadow = "2px 2px 6px rgba(0,0,0,0.2)";
+      skipButton.style.transition = "transform 0.2s ease";
+      skipButton.onmouseover = () => skipButton.style.transform = "scale(1.05)";
+      skipButton.onmouseout = () => skipButton.style.transform = "scale(1)";
+      skipButton.onclick = skipChoice;
+
+      const skipContainer = document.createElement("div");
+      skipContainer.id = "skipContainer";
+      skipContainer.style.width = "100%";
+      skipContainer.style.display = "flex";
+      skipContainer.style.justifyContent = "center";
+      skipContainer.appendChild(skipButton);
+      document.getElementById("game").appendChild(skipContainer);
+    }
+
+      [w1, w2].forEach(w => {
+        const div = document.createElement("div");
+        div.className = "choice";
+        div.innerHTML = `<strong>${w}</strong><div>${descriptions[w].text}</div><img src="images/${descriptions[w].image}" alt="${w}" style="width:80px;margin-top:0.5em;"/>`;
+        div.onclick = () => {
+          div.classList.add("clicked");
+          setTimeout(() => selectWord(w), 200);
+        };
+        choices.appendChild(div);
+      });
+    }
+
+    function updatePartyDisplay() {
+      const partyDiv = document.getElementById("party");
+      partyDiv.innerHTML = "";
+      party.forEach(w => {
+        const div = document.createElement("div");
+        div.className = "member";
+        div.innerHTML = `
+          <div class="tooltip">
+            <img src="images/${descriptions[w].image}" alt="${w}" />
+            <div>${w}</div>
+            <div class="tooltiptext">${descriptions[w].text}</div>
+          </div>`;
+        div.onclick = () => {
+          if (pendingWord) {
+            party = party.filter(p => p !== w);
+            party.push(pendingWord);
+            pendingWord = null;
+            updatePartyDisplay();
+            index += 2;
+            renderQuestion();
+          }
+        };
+        partyDiv.appendChild(div);
+      });
+    }
+
+    function selectWord(word) {
+      if (!party.includes(word)) {
+        if (party.length < 10) {
+          party.push(word);
+          index += 2;
+          renderQuestion();
+        } else {
+          pendingWord = word;
+          document.getElementById("question").innerText = "仲間は10人までです。誰かをタップして入れ替えてください。";
+        }
+      } else {
+        index += 2;
+        renderQuestion();
+      }
+      updatePartyDisplay();
+    }
+
+    function skipChoice() {
+      index += 2;
+      renderQuestion();
+      updatePartyDisplay();
+    }
+
+    function startGame() {
+      document.getElementById("start-screen").style.display = "none";
+      renderQuestion();
+    }
+  </script>
+</body>
+</html>
